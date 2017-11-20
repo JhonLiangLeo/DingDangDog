@@ -1,18 +1,22 @@
 package com.app.debrove.tinpandog.groups;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.app.debrove.tinpandog.R;
+import com.app.debrove.tinpandog.location.BdLocationActivity;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -31,6 +35,10 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
     Unbinder unbinder;
     @BindView(R.id.toolbar_groups)
     Toolbar mToolbarGroups;
+    @BindView(R.id.groups_frame_button_createNewGroup)
+    Button mButton;
+    @BindView(R.id.groups_frame_button_getLocation)
+    Button mButton_getLocation;
 
     private DrawerLayout mDrawerLayout;
 
@@ -88,8 +96,23 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
         return true;
     }
 
+    private static final String TAG = "GroupsFragment";
     @OnClick(R.id.groups_layout)
     public void onViewClicked() {
+        Log.e(TAG,"groups_layput chicked!");
+        Intent intent=new Intent(getActivity(),GroupsActivity.class);
+        getActivity().startActivity(intent);
+    }
 
+    @OnClick(R.id.groups_frame_button_createNewGroup)
+    public void onButtonClicked(){
+        Intent intent=new Intent(getActivity(),GroupsCreateActivity.class);
+        getActivity().startActivity(intent);
+    }
+
+    @OnClick(R.id.groups_frame_button_getLocation)
+    public void onButtonGetLocationClicked(){
+        Intent intent=new Intent(getActivity(),BdLocationActivity.class);
+        getActivity().startActivity(intent);
     }
 }

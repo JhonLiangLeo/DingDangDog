@@ -57,7 +57,8 @@
                 android:layout_gravity="center"
                 android:layout_marginEnd="32dp"
                 android:layout_marginStart="16dp"
-                android:src="@drawable/qr_code" />
+                android:src="@drawable/qr_code"
+                android:id="@+id/user_QRcode"/>
 
         </LinearLayout>
 

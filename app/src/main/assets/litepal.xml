@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<litepal>
+    <dbname value="GroupsChatItem"></dbname>
+
+    <version value="2"></version>
+
+    <list>
+        <mapping class="com.app.debrove.tinpandog.groups.datebase.ChatInformation"/>
+        <mapping class="com.app.debrove.tinpandog.groups.datebase.GroupsMemberInformation"/>
+    </list>
+</litepal>
