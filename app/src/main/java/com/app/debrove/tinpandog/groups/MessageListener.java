@@ -1,10 +1,11 @@
 package com.app.debrove.tinpandog.groups;
 
+import android.content.Context;
 import android.util.Log;
 
-import com.app.debrove.tinpandog.groups.datebase.ChatInformation;
-import com.app.debrove.tinpandog.groups.datebase.GroupsInformation;
-import com.app.debrove.tinpandog.groups.datebase.GroupsMemberInformation;
+import com.app.debrove.tinpandog.datebase.ChatInformation;
+import com.app.debrove.tinpandog.datebase.GroupsInformation;
+import com.app.debrove.tinpandog.datebase.GroupsMemberInformation;
 import com.hyphenate.EMMessageListener;
 import com.hyphenate.chat.EMCmdMessageBody;
 import com.hyphenate.chat.EMImageMessageBody;
@@ -36,26 +37,17 @@ public class MessageListener implements EMMessageListener {
      * 与用户正在交互的群聊名
      */
     private String mGroupsName;
+    private Context mContext;
 
-    public MessageListener(ChatItemAdapter chatItemAdapter){
+    public MessageListener(ChatItemAdapter chatItemAdapter,String groupsName,Context context){
         mChatItemAdapter=chatItemAdapter;
+        mGroupsName=groupsName;
+        mContext=context;
     }
 
     @Override
     public void onCmdMessageReceived(List<EMMessage> list) {
-        for(EMMessage emMessage:list){
-            String cmdAction=((EMCmdMessageBody)emMessage.getBody()).action();
-            switch (cmdAction){
-                case CmdAction.INVITE_INTO_GROUP:
-                    String groupsName=emMessage.getStringAttribute(GroupsMemberInformation.GROUPS_NAME,"");
-                    if("".equals(groupsName))
-                        break;
-                    GroupsInformation groupsInformation=new GroupsInformation();
-                    groupsInformation.setGroupsName(groupsName);
-                    groupsInformation.save();
-                    break;
-            }
-        }
+        Log.e(TAG,"onCmdMessageReceived");
     }
 
     @Override
@@ -80,6 +72,7 @@ public class MessageListener implements EMMessageListener {
 
     @Override
     public void onMessageReceived(List<EMMessage> list) {
+        Log.e(TAG,"onMessageReceived");
         EMMessage emMessage=null;
         List<ChatItem> chatItemList=new ArrayList<>();
         ChatItem chatItem=null;
@@ -91,17 +84,19 @@ public class MessageListener implements EMMessageListener {
                 continue;
             String userName=emMessage.getFrom();
             List<GroupsMemberInformation> groupsMemberInformationList= DataSupport.where("groupsName=? and userName=?",mGroupsName,userName).select("profileImagePath").find(GroupsMemberInformation.class);
-            if(groupsMemberInformationList.isEmpty()) {
+            /*if(groupsMemberInformationList.isEmpty()) {
                 Log.e(TAG,"user "+userName+" no exists");
                 continue;
             }
+            String profileImagePath=groupsMemberInformationList.get(i).getProfileImagePath();*/
+            String profileImagePath="";
             chatItem=new ChatItem(
-                    groupsMemberInformationList.get(i).getProfileImagePath(),true);
+                    profileImagePath,true);
 
             chatInformation=new ChatInformation();
             chatInformation.setGroupsName(groupsName);
             chatInformation.setIs_others(true);
-            chatInformation.setProfileUri(groupsMemberInformationList.get(0).getProfileImagePath());
+            chatInformation.setProfileUri(profileImagePath);
             chatInformation.setUserName(userName);
             chatInformation.setMsgId(emMessage.getMsgId());
             chatInformation.setTime(emMessage.getMsgTime());
@@ -113,8 +108,8 @@ public class MessageListener implements EMMessageListener {
                             ,ChatItem.ChatType.TEXT);
                     break;
                 case IMAGE:
-                    String imagePath=ImageLoader.saveImageFromNet(((EMImageMessageBody)emMessage.getBody())
-                            .getThumbnailUrl());
+                    String imagePath=ImageLoader.saveImage(((EMImageMessageBody)emMessage.getBody())
+                            .getThumbnailUrl(),mContext);
                     chatInformation.setChatType(ChatInformation.IMAGE);
                     chatInformation.setContent(imagePath);
                     chatItem.setContent(imagePath,ChatItem.ChatType.IMAGE);

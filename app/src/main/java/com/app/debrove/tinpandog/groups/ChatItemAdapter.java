@@ -1,8 +1,10 @@
 package com.app.debrove.tinpandog.groups;
 
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
+import android.os.Looper;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextPaint;
 import android.util.Log;
@@ -41,8 +43,10 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
      */
     private static ChatItem mChatItem_example;
     private RecyclerView mRecyclerView;
-    private int a_icon=96;
-    public int width_content=-1;
+    private Activity mActivity;
+    private int a_icon=48;
+    private float scale=0;
+    public static int width_content=-1;
     static {
          mChatItem_example = new ChatItem(null, false);
          mChatItem_example.setContent("Hello,world!", ChatItem.ChatType.TEXT);
@@ -52,31 +56,63 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
     /**
      *向聊天框内添加多条聊天信息，若为null，则添加示例信息
      */
-    public void addNewChatItem(List<ChatItem> list){
+    public void addNewChatItem(final List<ChatItem> list){
         if(list.size()!=0)
             mList.addAll(list);
         else
             mList.add(mChatItem_example);
-        moveToNewItem();
-        notifyDataSetChanged();
+        if(Looper.getMainLooper()!=Looper.myLooper()){
+            mActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    int num=list.size()==0?1:list.size();
+                    notifyItemRangeInserted(mList.size()-num,num);
+                    moveToNewItem();
+                }
+            });
+        }
+        else {
+            int num=list.size()==0?1:list.size();
+            notifyItemRangeInserted(mList.size()-num,num);
+            moveToNewItem();
+        }
     }
 
+
+    private int dpToPx(int dp){
+        if(scale<=0)
+             scale=mActivity.getResources().getDisplayMetrics().density;
+        return (int)(scale*dp+0.5f);
+    }
 
     public void moveToNewItem(){
-        int size=mList.size();
-        if(mRecyclerView!=null)
-            mRecyclerView.scrollToPosition(size==0?0:size-1);
+        int size = mList.size();
+        if (mRecyclerView != null)
+            mRecyclerView.scrollToPosition(size == 0 ? 0 : size - 1);
+
     }
 
-    public void setRecyclerView(RecyclerView recyclerView){
+    public void setField(RecyclerView recyclerView,Activity activity){
         mRecyclerView=recyclerView;
+        mActivity=activity;
     }
 
     public void addNewChatItem(ChatItem chatItem){
         mList.add(chatItem);
         //notifyDataSetChanged();
-        notifyItemInserted(mList.size()-1);
-        moveToNewItem();
+        if(Looper.getMainLooper()!=Looper.myLooper()){
+            mActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    notifyItemInserted(mList.size()-1);
+                    moveToNewItem();
+                }
+            });
+        }
+        else {
+            notifyItemInserted(mList.size()-1);
+            moveToNewItem();
+        }
     }
 
     @Override
@@ -100,10 +136,11 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
                 for(int i=0;i<text.length;i++){
                     textPaint.getTextBounds(text[i],0,text[i].length(),bounds);
                     line_forEachString=bounds.width()/(width_content-a_icon);
-                    line+=(bounds.width()%(width_content-a_icon)==0)?line_forEachString:line_forEachString+1;
-                    textView.append(text+"\n");
+                    int l=(bounds.width()%(width_content-a_icon)==0)?line_forEachString:line_forEachString+1;
+                    line+=(l==0)?1:l;
                 }
-                height=line*a_icon;
+                height=line*dpToPx(a_icon);
+                //Log.e(TAG,"height="+height+",line="+line);
                 textView.setText(chatItem.getContent());
                 childView=textView;
                 break;
@@ -111,17 +148,28 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
                 ImageView imageView=(ImageView)view.findViewById(R.id.chat_item_image);
                 Bitmap bitmap=BitmapFactory.decodeFile(chatItem.getContent());
                 height=bitmap.getHeight();
-                Glide.with(view.getContext()).load(chatItem.getContent()).into(imageView);
+                if(bitmap.getWidth()>width_content-dpToPx(48)){
+                    int w=width_content-dpToPx(48);
+                    height=height*w/bitmap.getWidth();
+                    Glide.with(view.getContext()).load(chatItem.getContent()).override(w,height).into(imageView);
+                }
+                else
+                    Glide.with(view.getContext()).load(chatItem.getContent()).into(imageView);
+                //Log.e(TAG,"h="+height+",w="+bitmap.getWidth());
+
+                bitmap=null;
                 childView=imageView;
                 break;
         }
         ViewGroup.LayoutParams layoutParams1=childView.getLayoutParams();
         layoutParams1.height=height;
-        layoutParams1.width=width_content-48;
+        layoutParams1.width=width_content-dpToPx(48);
+        if(chatItem.is_others())
+            childView.setX(dpToPx(48));
         childView.setLayoutParams(layoutParams1);
-        Log.e(TAG,"h="+height);
         frameLayout.setLayoutParams(new LinearLayout.LayoutParams(width_content,height));
-        view.setLayoutParams(new LinearLayout.LayoutParams(width_content,height+2));
+        view.setLayoutParams(new LinearLayout.LayoutParams(width_content,height+dpToPx(2)));
+        //Log.e(TAG,"imageH="+profileImage.getHeight());
     }
 
     @Override

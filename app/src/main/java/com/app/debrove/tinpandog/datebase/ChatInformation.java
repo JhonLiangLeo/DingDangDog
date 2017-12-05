@@ -1,4 +1,4 @@
-package com.app.debrove.tinpandog.groups.datebase;
+package com.app.debrove.tinpandog.datebase;
 
 import org.litepal.annotation.Column;
 import org.litepal.crud.DataSupport;
@@ -26,7 +26,12 @@ public class ChatInformation extends DataSupport {
     private String content;
 
     /**
-     * 聊天所属的群名称
+     * 聊天者的名字
+     */
+    private String userRealName;
+
+    /**
+     * 聊天者的组ID
      */
     private String groupsName;
 
@@ -80,6 +85,14 @@ public class ChatInformation extends DataSupport {
         this.time = time;
     }
 
+    public String getUserRealName() {
+        return userRealName;
+    }
+
+    public void setUserRealName(String userRealName) {
+        this.userRealName = userRealName;
+    }
+
     public String getGroupsName() {
         return groupsName;
     }
@@ -119,4 +132,5 @@ public class ChatInformation extends DataSupport {
     public void setUserName(String userName) {
         this.userName = userName;
     }
+
 }

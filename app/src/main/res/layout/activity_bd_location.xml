@@ -6,7 +6,8 @@
               <TextView
                   android:layout_width="match_parent"
                   android:layout_height="300dp"
-                  android:id="@+id/bdLocation_activity_textView"/>
+                  android:id="@+id/bdLocation_activity_textView"
+                  android:background="@color/grey"/>
 
               <Button
                   android:layout_width="wrap_content"

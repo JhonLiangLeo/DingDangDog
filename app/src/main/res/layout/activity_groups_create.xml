@@ -26,7 +26,16 @@
     <android.support.v7.widget.RecyclerView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="9"
+        android:layout_weight="8"
         android:id="@+id/activity_groupsCreate_recyclerView">
     </android.support.v7.widget.RecyclerView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:textSize="30sp"
+        android:text="加载中。。。"
+        android:id="@+id/activity_groupsCreate_textView"/>
+
+
 </LinearLayout>

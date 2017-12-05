@@ -2,22 +2,24 @@ package com.app.debrove.tinpandog.groups;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.app.debrove.tinpandog.R;
-import com.app.debrove.tinpandog.groups.datebase.GroupsInformation;
-import com.app.debrove.tinpandog.groups.datebase.GroupsMemberInformation;
+import com.app.debrove.tinpandog.datebase.GroupsInformation;
+import com.app.debrove.tinpandog.datebase.GroupsMemberInformation;
 import com.hyphenate.chat.EMClient;
-import com.hyphenate.chat.EMCmdMessageBody;
+import com.hyphenate.chat.EMGroup;
 import com.hyphenate.chat.EMGroupManager;
 import com.hyphenate.chat.EMGroupOptions;
-import com.hyphenate.chat.EMMessage;
 import com.hyphenate.exceptions.HyphenateException;
 
 import org.litepal.crud.DataSupport;
@@ -36,52 +38,67 @@ public class GroupsCreateActivity extends Activity implements View.OnClickListen
     private RecyclerView mRecyclerView;
     private Button mButton;
     private EditText mEditText_groupsName;
+    private TextView mTextView;
 
     private FriendAdapter mFriendAdapter;
     private List<FriendItem> mFriendItemList;
+    private LoadFriendsFromNetTask mLoadFriendsFromNetTask;
+    private SendGroupsInformationToServerThread mSendGroupsInformationToServerThread;
+    private String mUserName,mProfilePath;
+
+    private static final String TAG = "GroupsCreateActivity";
+
+    private static final String USER_NAME="userName";
+    private static final String PROFILE_PATH="profilePath";
+    private static final String ACTIVITY_STARTED_BY_NEW_METHOD="method:startGroupsCreateActivity";
 
     @Override
-    protected void onCreate( Bundle savedInstanceState) {
+    protected void onCreate ( Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_groups_create);
+
+        Intent intent=getIntent();
+        mProfilePath=intent.getStringExtra(PROFILE_PATH);
+        mUserName=intent.getStringExtra(USER_NAME);
+        if(!intent.getBooleanExtra(ACTIVITY_STARTED_BY_NEW_METHOD,false)) {
+            Log.e(TAG, "use method:GroupsCreateActivity.startGroupsCreateActivity to start this activity");
+            finish();
+        }
+
         mRecyclerView=(RecyclerView)findViewById(R.id.activity_groupsCreate_recyclerView);
         mButton=(Button)findViewById(R.id.activity_groupsCreate_button_confirm);
         mButton.setOnClickListener(this);
         mEditText_groupsName=(EditText)findViewById(R.id.activity_groupsCreate_editText_groupsName);
+        mTextView=(TextView)findViewById(R.id.activity_groupsCreate_textView);
 
-        initFriendList();
-        mFriendAdapter=new FriendAdapter(mFriendItemList);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        mRecyclerView.setAdapter(mFriendAdapter);
+        mLoadFriendsFromNetTask=new LoadFriendsFromNetTask();
+        mLoadFriendsFromNetTask.execute();
     }
 
-    /**
-     *加载好友列表中的好友，用于选择创建群聊成员
-     */
-    private void initFriendList(){
-        mFriendItemList=new ArrayList<>();
-        List<String> friendNameList=null;
-        try {
-            friendNameList=EMClient.getInstance().contactManager().getAllContactsFromServer();
-        }
-        catch (HyphenateException e){
-            e.printStackTrace();
-        }
-        if(friendNameList!=null){
-            FriendItem friendItem=null;
-            List<GroupsMemberInformation> groupsMemberInformationList=null;
-            for(String name:friendNameList){
-                groupsMemberInformationList= DataSupport.select("profileImagePath").find(GroupsMemberInformation.class);
-                friendItem=new FriendItem(groupsMemberInformationList.get(0).getProfileImagePath(),name);
-                mFriendItemList.add(friendItem);
-            }
-        }
-        else
-            Toast.makeText(this,"You've no friends.",Toast.LENGTH_SHORT).show();
+    public static void startGroupsCreateActivity(String s[],Activity activity){
+        Log.e(TAG,"s.length="+s.length);
+        if(s.length!=2)
+            throw new IllegalArgumentException("Two strings are required.");
+        Intent intent=new Intent(activity,GroupsCreateActivity.class);
+        intent.putExtra(USER_NAME,s[0]);
+        intent.putExtra(PROFILE_PATH,s[1]);
+        intent.putExtra(ACTIVITY_STARTED_BY_NEW_METHOD,true);
+        activity.startActivity(intent);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(mLoadFriendsFromNetTask!=null)
+            mLoadFriendsFromNetTask.cancel(true);
     }
 
     @Override
     public void onClick(View v) {
+        if(mSendGroupsInformationToServerThread!=null&&mSendGroupsInformationToServerThread.isAlive()){
+            Toast.makeText(this,"点击过于频繁，请之后重试。",Toast.LENGTH_SHORT).show();
+            return;
+        }
         String groupsName=mEditText_groupsName.getText().toString();
         if("".equals(groupsName)){
             Toast.makeText(this,"群名不可为空！",Toast.LENGTH_SHORT).show();
@@ -89,10 +106,8 @@ public class GroupsCreateActivity extends Activity implements View.OnClickListen
         }
         List<String> groupsMemberName=new ArrayList<>();
         for(FriendItem friendItem:mFriendItemList){
-            if(friendItem.isChosen()) {
+            if(friendItem.isChosen())
                 groupsMemberName.add(friendItem.getFriendName());
-                new SendGroupInviteMessThread(friendItem.getFriendName(),groupsName).start();
-            }
         }
         if(groupsMemberName.isEmpty()) {
             Toast.makeText(this,"群聊人数不可为零！",Toast.LENGTH_SHORT).show();
@@ -104,39 +119,80 @@ public class GroupsCreateActivity extends Activity implements View.OnClickListen
         String names[]=new String[groupsMemberName.size()];
         for (int i=0;i<names.length;i++)
             names[i]=groupsMemberName.get(i);
-        try{
-            EMClient.getInstance().groupManager().createGroup(groupsName, "",names,"", option);
-            GroupsInformation groupsInformation=new GroupsInformation();
-            groupsInformation.setGroupsName(groupsName);
-            groupsInformation.save();
-            Intent intent=new Intent(this,GroupsActivity.class);
-            intent.putExtra(GroupsActivity.GROUPS_NAME,groupsName);
-            //intent.putExtra(GroupsActivity.USER_NAME,);
-            //intent.putExtra(GroupsActivity.USER_PROFILE_PATH,);
-            startActivity(intent);
-            finish();
+        mSendGroupsInformationToServerThread=new SendGroupsInformationToServerThread(new String[]{groupsName,"",""},names,option);
+        mSendGroupsInformationToServerThread.start();
+    }
+
+    private class LoadFriendsFromNetTask extends AsyncTask<Void,Boolean,Void>{
+        @Override
+        protected Void doInBackground(Void... params) {
+            mFriendItemList=new ArrayList<>();
+            List<String> friendNameList=null;
+            try {
+                friendNameList=EMClient.getInstance().contactManager().getAllContactsFromServer();
+            }
+            catch (HyphenateException e){
+                e.printStackTrace();
+            }
+            if(friendNameList!=null){
+                FriendItem friendItem=null;
+                List<GroupsMemberInformation> groupsMemberInformationList=null;
+                for(String name:friendNameList){
+                    groupsMemberInformationList= DataSupport.select("profileImagePath").find(GroupsMemberInformation.class);
+                    if(!groupsMemberInformationList.isEmpty())
+                        friendItem=new FriendItem(groupsMemberInformationList.get(0).getProfileImagePath(),name);
+                    else
+                        friendItem=new FriendItem("",name);
+                    mFriendItemList.add(friendItem);
+                }
+                publishProgress(true);
+            }
+            else
+                publishProgress(false);
+            return null;
         }
-        catch (HyphenateException e){
-            e.printStackTrace();
+
+        @Override
+        protected void onProgressUpdate(Boolean... values) {
+            if(values[0]) {
+                mFriendAdapter = new FriendAdapter(mFriendItemList);
+                mRecyclerView.setLayoutManager(new LinearLayoutManager(GroupsCreateActivity.this));
+                mRecyclerView.setAdapter(mFriendAdapter);
+            }
+            else
+                Toast.makeText(GroupsCreateActivity.this,"You've no friends.",Toast.LENGTH_SHORT).show();
+            mTextView.setText("加载完成");
         }
     }
 
-    private class SendGroupInviteMessThread extends Thread{
-        String mUserName,mGroupsName;
+    private class SendGroupsInformationToServerThread extends Thread{
+        String mString[],mNames[];
+        EMGroupOptions mEMGroupOptions;
 
-        private SendGroupInviteMessThread(String userName,String groupsName){
-            mUserName=userName;
-            mGroupsName=groupsName;
+        private SendGroupsInformationToServerThread(String s[],String names[],EMGroupOptions emGroupOptions){
+            mString=s;
+            mNames=names;
+            mEMGroupOptions=emGroupOptions;
         }
 
         @Override
         public void run() {
-            EMMessage emMessage=EMMessage.createSendMessage(EMMessage.Type.CMD);
-            emMessage.setChatType(EMMessage.ChatType.GroupChat);
-            emMessage.setTo(mUserName);
-            emMessage.setAttribute(GroupsMemberInformation.GROUPS_NAME,mGroupsName);
-            emMessage.addBody(new EMCmdMessageBody(MessageListener.CmdAction.INVITE_INTO_GROUP));
-            EMClient.getInstance().chatManager().sendMessage(emMessage);
+            try{
+                EMGroup emGroup=EMClient.getInstance().groupManager().createGroup(mString[0], "desc",mNames,"reason", mEMGroupOptions);
+                String groupsName=emGroup.getGroupId();
+
+                GroupsInformation groupsInformation=new GroupsInformation();
+                groupsInformation.setGroupsRealName(mString[0]);
+                groupsInformation.setGroupsName(groupsName);
+                groupsInformation.save();
+                if(!GroupsCreateActivity.this.isDestroyed()) {
+                    GroupsActivity.startGroupsActivity(new String[]{groupsName,mUserName,mProfilePath,mString[0]},GroupsCreateActivity.this);
+                    finish();
+                }
+            }
+            catch (HyphenateException e){
+                e.printStackTrace();
+            }
         }
     }
 }

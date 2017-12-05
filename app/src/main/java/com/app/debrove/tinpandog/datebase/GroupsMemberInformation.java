@@ -1,4 +1,4 @@
-package com.app.debrove.tinpandog.groups.datebase;
+package com.app.debrove.tinpandog.datebase;
 
 import org.litepal.annotation.Column;
 import org.litepal.crud.DataSupport;
@@ -13,15 +13,20 @@ public class GroupsMemberInformation extends DataSupport {
     @Column(ignore = true)
     public static final String  GROUPS_NAME="GROUPS_NAME";
 
-    /**
-     * 群成员所加入的群名
-     */
+    @Column(ignore = true)
+    public static final String GROUPS_REAL_NAME="GROOUPS_REAL_NAME";
+
     private String groupsName;
+
+    /**
+     * 群成员ID
+     */
+    private String userName;
 
     /**
      * 群成员名
      */
-    private String userName;
+    private String userRealName;
 
     /**
      * 群成员头像图片的路径
@@ -34,6 +39,14 @@ public class GroupsMemberInformation extends DataSupport {
 
     public void setGroupsName(String groupsName) {
         this.groupsName = groupsName;
+    }
+
+    public String getUserRealName() {
+        return userRealName;
+    }
+
+    public void setUserRealName(String userRealName) {
+        this.userRealName = userRealName;
     }
 
     public String getUserName() {

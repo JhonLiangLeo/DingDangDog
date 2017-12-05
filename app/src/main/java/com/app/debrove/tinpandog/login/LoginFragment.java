@@ -1,12 +1,10 @@
 package com.app.debrove.tinpandog.login;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -64,6 +62,10 @@ public class LoginFragment extends Fragment {
     //登录点击事件
     @OnClick(R.id.btn_login)
     public void onViewClicked() {
+        Intent intent = new Intent(getActivity(), MainActivity.class);
+        startActivity(intent);
+        getActivity().finish();
+
         String num = mUserNumber.getText().toString().trim();
         String password = mUserPassword.getText().toString().trim();
 

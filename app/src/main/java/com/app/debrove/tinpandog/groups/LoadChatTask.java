@@ -2,8 +2,9 @@ package com.app.debrove.tinpandog.groups;
 
 import android.os.AsyncTask;
 
-import com.app.debrove.tinpandog.groups.datebase.ChatInformation;
-import com.app.debrove.tinpandog.groups.datebase.GroupsMemberInformation;
+import com.app.debrove.tinpandog.BaseApplication;
+import com.app.debrove.tinpandog.datebase.ChatInformation;
+import com.app.debrove.tinpandog.datebase.GroupsMemberInformation;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMConversation;
 import com.hyphenate.chat.EMImageMessageBody;
@@ -108,7 +109,7 @@ public class LoadChatTask extends AsyncTask<Void,List<ChatItem>,Void> {
                             ,ChatItem.ChatType.TEXT);
                     break;
                 case IMAGE:
-                    String imagePath=ImageLoader.saveImageFromNet( ((EMImageMessageBody)emMessage.getBody()).getThumbnailUrl() );
+                    String imagePath=ImageLoader.saveImage( ((EMImageMessageBody)emMessage.getBody()).getThumbnailUrl() , BaseApplication.getContext());
                     chatItem.setContent(imagePath, ChatItem.ChatType.IMAGE);
                     break;
             }

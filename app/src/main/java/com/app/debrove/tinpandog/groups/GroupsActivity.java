@@ -25,8 +25,9 @@ import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.app.debrove.tinpandog.R;
-import com.app.debrove.tinpandog.groups.datebase.ChatInformation;
-import com.app.debrove.tinpandog.groups.datebase.GroupsMemberInformation;
+import com.app.debrove.tinpandog.datebase.ChatInformation;
+import com.app.debrove.tinpandog.datebase.GroupsMemberInformation;
+import com.hyphenate.EMCallBack;
 import com.hyphenate.chat.EMClient;
 
 import com.hyphenate.chat.EMMessage;
@@ -39,28 +40,20 @@ import com.hyphenate.chat.EMMessage;
  * 实现功能：
  *     1.消息的发送与本地保存（图片、文字）；
  *     2.群聊的创建 @see {@link GroupsCreateActivity}
+ *     3.群组情况监听的实现，其它活动未实现
  */
 
 public class GroupsActivity extends Activity implements View.OnClickListener{
-    /**
-     * 向{@link Activity#startActivity(Intent)}的Intent中传入
-     *       <Field>mGroupsName,mUserName,mProfileImagePath</Field>时所用的FLAG
-     */
-    public static final String GROUPS_NAME="groupsName";
-    public static final String USER_NAME="userName";
-    public static final String USER_PROFILE_PATH="userProfilePath";
+    private static final String GROUPS_NAME="groupsName";
+    private static final String GROUPS_REAL_NAME="groupsRealName";
+    private static final String USER_NAME="userName";
+    private static final String USER_PROFILE_PATH="userProfilePath";
+    private static final String ACTIVITY_STARTED_BY_NEW_METHOD="startGroupsActivity";
 
     private static final int CHOOSE_PHOTO_FROM_ALBUM=0;
     private static final int ASK_PERMISSION=1;
-
-    /**
-     * @param mGroupsName 群聊的群名
-     * @param mUserName 用户名
-     * @param mProfileImagePath 用户头像图片的绝对路径名
-     *    在{@link Activity#startActivity(Intent)}时，向Intent中传入
-     */
     private String mGroupsName="GroupsExample-1.0",
-            mUserName="601976748@qq.com",mProfileImagePath;
+            mUserName="601976748@qq.com",mProfileImagePath,mGroupsRealName;
 
     private RecyclerView mRecyclerView;
     private EditText mEditText;
@@ -77,9 +70,15 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activty_groups);
 
-        mGroupsName=getIntent().getStringExtra(GROUPS_NAME);
-        mUserName=getIntent().getStringExtra(USER_NAME);
-        mProfileImagePath=getIntent().getStringExtra(USER_PROFILE_PATH);
+        Intent intent=getIntent();
+        mGroupsName=intent.getStringExtra(GROUPS_NAME);
+        mUserName=intent.getStringExtra(USER_NAME);
+        mProfileImagePath=intent.getStringExtra(USER_PROFILE_PATH);
+        mGroupsRealName=intent.getStringExtra(GROUPS_REAL_NAME);
+        if(!intent.getBooleanExtra(ACTIVITY_STARTED_BY_NEW_METHOD,false)){
+            Log.e(TAG,"use method:GroupsActivity.startGroupsActivity to start this activity");
+            finish();
+        }
 
         mView_activity=(LinearLayout) findViewById(R.id.groups_activity_viewActivity);
         mView_activity.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
@@ -91,7 +90,6 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
                     }
                     if (bottom < oldBottom) {
                         mChatItemAdapter.moveToNewItem();
-                        Log.e(TAG, "keyboard appear");
                     }
                     height_key = (height_key < mLinearLayout_key.getHeight()) ? mLinearLayout_key.getHeight() : height_key;
                     //Log.e(TAG, "h=" + height_key);
@@ -115,11 +113,30 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
         mChatItemAdapter=new ChatItemAdapter();
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mRecyclerView.setAdapter(mChatItemAdapter);
-        mChatItemAdapter.setRecyclerView(mRecyclerView);
+        mChatItemAdapter.setField(mRecyclerView,this);
 
         new LoadChatTask(mUserName,mGroupsName,mChatItemAdapter).execute();
 
+        mMessageListener=new MessageListener(mChatItemAdapter,mGroupsName,this);
         EMClient.getInstance().chatManager().addMessageListener(mMessageListener);
+        EMClient.getInstance().groupManager().addGroupChangeListener(new GroupChangeListener());
+    }
+
+    /**
+     * 用于启动本活动的静态方法，使用其它方式启动会抛出异常
+     * @param s 依次为群组ID、用户名、用户头像路径、群名称
+     * @param activity
+     */
+    public static void startGroupsActivity(String s[],Activity activity){
+        if(s.length!=4)
+            throw new IllegalArgumentException("Four strings are required.");
+        Intent intent=new Intent(activity,GroupsActivity.class);
+        intent.putExtra(GROUPS_NAME,s[0]);
+        intent.putExtra(USER_NAME,s[1]);
+        intent.putExtra(USER_PROFILE_PATH,s[2]);
+        intent.putExtra(GROUPS_REAL_NAME,s[3]);
+        intent.putExtra(ACTIVITY_STARTED_BY_NEW_METHOD,true);
+        activity.startActivity(intent);
     }
 
     @Override
@@ -161,7 +178,13 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
     private static final String TAG = "GroupsActivity";
 
     private void sendMess(ChatInformation chatInformation,ChatItem chatItem,EMMessage emMessage){
+        chatInformation.setProfileUri(mProfileImagePath);
+        chatInformation.setTime(System.currentTimeMillis());
+        chatInformation.setGroupsName(mGroupsName);
+        chatInformation.setIs_others(false);
+        chatInformation.setUserName(mUserName);
         chatInformation.save();
+
         emMessage.setChatType(EMMessage.ChatType.GroupChat);
         emMessage.setAttribute(GroupsMemberInformation.GROUPS_NAME,mGroupsName);
         mChatItemAdapter.addNewChatItem(chatItem);
@@ -170,16 +193,13 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
     }
 
     private void sendImageMess(String providedImagePath){
-        String imagePath=ImageLoader.saveImageFromLocal(providedImagePath);
+        String imagePath=ImageLoader.saveImage(providedImagePath,this);
         ChatInformation chatInformation=new ChatInformation();
-        chatInformation.setProfileUri(mProfileImagePath);
-        chatInformation.setTime(System.currentTimeMillis());
-        chatInformation.setGroupsName(mGroupsName);
-        chatInformation.setIs_others(false);
-        ChatItem chatItem=new ChatItem(mProfileImagePath,false);
-        EMMessage emMessage=EMMessage.createImageSendMessage(imagePath,false,mGroupsName);
         chatInformation.setContent(imagePath);
         chatInformation.setChatType(ChatInformation.IMAGE);
+
+        ChatItem chatItem=new ChatItem(mProfileImagePath,false);
+        EMMessage emMessage=EMMessage.createImageSendMessage(imagePath,false,mGroupsName);
         chatItem.setContent(imagePath, ChatItem.ChatType.IMAGE);
         sendMess(chatInformation,chatItem,emMessage);
     }
@@ -214,10 +234,7 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
             return;
         switch (requestCode){
             case CHOOSE_PHOTO_FROM_ALBUM:
-                if(Build.VERSION.SDK_INT>=19)
-                    handleImageOnKitKat(data);
-                else
-                    handleImageBeforeKitKat(data);
+                new ImageThread(data).start();
                 break;
         }
     }
@@ -270,7 +287,41 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
 
         @Override
         public void run() {
+            Log.e(TAG,"mess to "+mEMMessage.getTo());
             EMClient.getInstance().chatManager().sendMessage(mEMMessage);
+            mEMMessage.setMessageStatusCallback(new EMCallBack() {
+                @Override
+                public void onSuccess() {
+                    Log.e(TAG,"onSuccess");
+                }
+
+                @Override
+                public void onError(int i, String s) {
+                    Log.e(TAG,"onError");
+                    Log.e(TAG,"i="+i+",s="+s);
+                }
+
+                @Override
+                public void onProgress(int i, String s) {
+                    Log.e(TAG,"onProgress");
+                }
+            });
+        }
+    }
+
+    private class ImageThread extends Thread{
+        Intent mIntent;
+
+        private ImageThread(Intent intent){
+            mIntent=intent;
+        }
+
+        @Override
+        public void run() {
+            if(Build.VERSION.SDK_INT>=19)
+                handleImageOnKitKat(mIntent);
+            else
+                handleImageBeforeKitKat(mIntent);
         }
     }
 }

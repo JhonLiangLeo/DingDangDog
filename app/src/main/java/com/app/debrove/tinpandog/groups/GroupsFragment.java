@@ -6,6 +6,8 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,6 +19,8 @@ import android.widget.Toast;
 
 import com.app.debrove.tinpandog.R;
 import com.app.debrove.tinpandog.location.BdLocationActivity;
+import com.app.debrove.tinpandog.util.ShareUtils;
+import com.app.debrove.tinpandog.util.StaticClass;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -32,6 +36,11 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
 
     private GroupsContract.Presenter mPresenter;
 
+    /**
+     * 显示群组信息的{@link RecyclerView}的{@link android.support.v7.widget.RecyclerView.Adapter}
+     */
+    private GroupsAdapter mGroupsAdapter;
+
     Unbinder unbinder;
     @BindView(R.id.toolbar_groups)
     Toolbar mToolbarGroups;
@@ -39,6 +48,11 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
     Button mButton;
     @BindView(R.id.groups_frame_button_getLocation)
     Button mButton_getLocation;
+    /**
+     * 显示群组信息
+     */
+    @BindView(R.id.groups_frame_recyclerView_groups)
+    RecyclerView mRecyclerView_groups;
 
     private DrawerLayout mDrawerLayout;
 
@@ -70,6 +84,10 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
         });
         mToolbarGroups.setOnMenuItemClickListener(this);
         mDrawerLayout = getActivity().findViewById(R.id.drawer);
+
+        mGroupsAdapter=new GroupsAdapter(getActivity());
+        mRecyclerView_groups.setLayoutManager(new LinearLayoutManager(getContext()));
+        mRecyclerView_groups.setAdapter(mGroupsAdapter);
     }
 
     @Override
@@ -77,6 +95,15 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
         if (presenter != null) {
             mPresenter = presenter;
         }
+    }
+
+    /**
+     * 在重新进入时检查群组信息是否变动，以更新UI
+     */
+    @Override
+    public void onStart() {
+        super.onStart();
+        mGroupsAdapter.onActivityStart();
     }
 
     @Override
@@ -97,17 +124,14 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
     }
 
     private static final String TAG = "GroupsFragment";
-    @OnClick(R.id.groups_layout)
-    public void onViewClicked() {
-        Log.e(TAG,"groups_layput chicked!");
-        Intent intent=new Intent(getActivity(),GroupsActivity.class);
-        getActivity().startActivity(intent);
-    }
 
+    /**
+     * 进入群组创建活动
+     */
     @OnClick(R.id.groups_frame_button_createNewGroup)
     public void onButtonClicked(){
-        Intent intent=new Intent(getActivity(),GroupsCreateActivity.class);
-        getActivity().startActivity(intent);
+        String userName= ShareUtils.getString(getContext(), StaticClass.KEY_USER_NUM,"");
+        GroupsCreateActivity.startGroupsCreateActivity(new String[]{userName,""},getActivity());
     }
 
     @OnClick(R.id.groups_frame_button_getLocation)

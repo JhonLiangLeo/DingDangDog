@@ -1,5 +1,7 @@
 package com.app.debrove.tinpandog.user;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -9,9 +11,11 @@ import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.app.debrove.tinpandog.R;
+import com.app.debrove.tinpandog.qrcode.QrcodeActivity;
 import com.app.debrove.tinpandog.util.ShareUtils;
 import com.app.debrove.tinpandog.util.StaticClass;
 
@@ -32,6 +36,8 @@ public class UserFragment extends Fragment implements UserContract.View {
     Toolbar mToolbarUser;
     @BindView(R.id.user_name)
     TextView mUserName;
+    @BindView(R.id.user_QRcode)
+    ImageView mUserQRcode;
 
     private DrawerLayout mDrawerLayout;
 
@@ -64,6 +70,15 @@ public class UserFragment extends Fragment implements UserContract.View {
         mDrawerLayout = getActivity().findViewById(R.id.drawer);
 
         mUserName.setText(ShareUtils.getString(getContext(), StaticClass.KEY_USER_NAME,"用户名"));
+
+        mUserQRcode.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Activity activity=UserFragment.this.getActivity();
+                Intent intent=new Intent(activity, QrcodeActivity.class);
+                activity.startActivity(intent);
+            }
+        });
     }
 
     @Override
