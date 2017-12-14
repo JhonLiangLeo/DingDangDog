@@ -4,10 +4,8 @@ import android.content.Context;
 import android.util.Log;
 
 import com.app.debrove.tinpandog.datebase.ChatInformation;
-import com.app.debrove.tinpandog.datebase.GroupsInformation;
 import com.app.debrove.tinpandog.datebase.GroupsMemberInformation;
 import com.hyphenate.EMMessageListener;
-import com.hyphenate.chat.EMCmdMessageBody;
 import com.hyphenate.chat.EMImageMessageBody;
 import com.hyphenate.chat.EMMessage;
 import com.hyphenate.chat.EMTextMessageBody;

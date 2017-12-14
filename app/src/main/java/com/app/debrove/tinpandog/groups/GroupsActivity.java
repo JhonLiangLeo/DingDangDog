@@ -14,6 +14,7 @@ import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -59,6 +60,7 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
     private EditText mEditText;
     private ImageButton mImageButton;
     private Button mButton_sendImage;
+    private SwipeRefreshLayout mSwipeRefreshLayout_loadMoreChat;
 
     private ChatItemAdapter mChatItemAdapter;
     private MessageListener mMessageListener;
@@ -113,7 +115,16 @@ public class GroupsActivity extends Activity implements View.OnClickListener{
         mChatItemAdapter=new ChatItemAdapter();
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mRecyclerView.setAdapter(mChatItemAdapter);
-        mChatItemAdapter.setField(mRecyclerView,this);
+
+        mSwipeRefreshLayout_loadMoreChat=(SwipeRefreshLayout)findViewById(R.id.groups_activity_swipeRefreshLayout);
+        mSwipeRefreshLayout_loadMoreChat.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                mChatItemAdapter.onRefresh();
+            }
+        });
+
+        mChatItemAdapter.setField(mRecyclerView,this,mSwipeRefreshLayout_loadMoreChat);
 
         new LoadChatTask(mUserName,mGroupsName,mChatItemAdapter).execute();
 

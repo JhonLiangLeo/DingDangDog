@@ -80,7 +80,7 @@ public class LoadChatTask extends AsyncTask<Void,List<ChatItem>,Void> {
 
     @Override
     protected void onProgressUpdate(List<ChatItem>... values) {
-        mChatItemAdapter.addNewChatItem(values[0]);
+        mChatItemAdapter.onLoadMoreHistoryChat(values[0]);
     }
 
 

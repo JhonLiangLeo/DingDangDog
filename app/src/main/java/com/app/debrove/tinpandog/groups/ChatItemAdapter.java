@@ -3,22 +3,20 @@ package com.app.debrove.tinpandog.groups;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Rect;
+import android.os.AsyncTask;
 import android.os.Looper;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.RecyclerView;
-import android.text.TextPaint;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.app.debrove.tinpandog.R;
 import com.bumptech.glide.Glide;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,14 +35,14 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
     /**
      * 聊天信息的储存
      */
-    private List<ChatItem> mList=new ArrayList();
+    private List<ChatItem> mShownList=new ArrayList(),mChatItemList;
     /**
      * 示例用的聊天信息
      */
     private static ChatItem mChatItem_example;
     private RecyclerView mRecyclerView;
     private Activity mActivity;
-    private int a_icon=48;
+    private int a_icon=48,mPageSize=8,mCurrenPage=0;
     private float scale=0;
     public static int width_content=-1;
     static {
@@ -53,96 +51,153 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
     };
     private static final String TAG = "ChatItemAdapter";
 
+    private SwipeRefreshLayout mSwipeRefreshLayout;
+    private boolean mIsFirstLoaded;
+
     /**
      *向聊天框内添加多条聊天信息，若为null，则添加示例信息
      */
     public void addNewChatItem(final List<ChatItem> list){
         if(list.size()!=0)
-            mList.addAll(list);
+            mShownList.addAll(list);
         else
-            mList.add(mChatItem_example);
+            mShownList.add(mChatItem_example);
         if(Looper.getMainLooper()!=Looper.myLooper()){
             mActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     int num=list.size()==0?1:list.size();
-                    notifyItemRangeInserted(mList.size()-num,num);
+                    notifyItemRangeInserted(mShownList.size()-num,num);
                     moveToNewItem();
                 }
             });
         }
         else {
             int num=list.size()==0?1:list.size();
-            notifyItemRangeInserted(mList.size()-num,num);
+            notifyItemRangeInserted(mShownList.size()-num,num);
             moveToNewItem();
         }
     }
 
-
-    private int dpToPx(int dp){
-        if(scale<=0)
-             scale=mActivity.getResources().getDisplayMetrics().density;
-        return (int)(scale*dp+0.5f);
-    }
-
     public void moveToNewItem(){
-        int size = mList.size();
+        int size = mShownList.size();
         if (mRecyclerView != null)
             mRecyclerView.scrollToPosition(size == 0 ? 0 : size - 1);
 
     }
 
-    public void setField(RecyclerView recyclerView,Activity activity){
-        mRecyclerView=recyclerView;
-        mActivity=activity;
+    /**
+     * 将历史消息加载入内存中保存，不展示全部
+     * @param chatItems 历史消息
+     */
+    public void onLoadMoreHistoryChat(List<ChatItem> chatItems){
+        StringBuilder stringBuilder=new StringBuilder();
+        for(ChatItem chatItem:chatItems)
+            stringBuilder.append(chatItem.getContent()+" ");
+        Log.e(TAG,"mess:"+stringBuilder.toString());
+        mChatItemList=chatItems;
+        mIsFirstLoaded=true;
+        onRefresh();
     }
 
+    /**
+     * 在用户向上滑动时，加载更多的历史消息
+     */
+    public void onRefresh(){
+        new AsyncTask<Integer,List<ChatItem>,Void>(){
+            @Override
+            protected Void doInBackground(Integer... params) {
+                mCurrenPage++;
+
+                int expectedEndPosition=mChatItemList.size()-(mCurrenPage-1)*mPageSize;
+                if(expectedEndPosition<=0){
+                    publishProgress();
+                    return null;
+                }
+                int startPosition=expectedEndPosition-mPageSize;
+                if(startPosition<0)
+                    startPosition=0;
+                List<ChatItem> chatItems=new ArrayList<ChatItem>();
+                for(int i=expectedEndPosition-1;i>=startPosition;i--)
+                    chatItems.add(0,mChatItemList.get(i));
+
+                publishProgress(chatItems);
+                return null;
+            }
+
+            @Override
+            protected void onProgressUpdate(List<ChatItem>... values) {
+                Log.e(TAG,"load successfully!");
+                if(values.length==1) {
+                    Log.e(TAG, "len=" + values[0].size());
+                    StringBuilder stringBuilder=new StringBuilder();
+                    for(ChatItem chatItem:values[0])
+                        stringBuilder.append(chatItem.getContent()+" ");
+                    Log.e(TAG,"loadMess="+stringBuilder.toString());
+                    mShownList.addAll(0,values[0]);
+                    notifyItemRangeInserted(0,values[0].size());
+                    if(mIsFirstLoaded){
+                        moveToNewItem();
+                        mIsFirstLoaded=false;
+                    }
+                }
+                else
+                    Toast.makeText(mActivity,"没有更多历史消息了。",Toast.LENGTH_SHORT).show();
+                mSwipeRefreshLayout.setRefreshing(false);
+            }
+        }.execute();
+    }
+
+    public void setField(RecyclerView recyclerView,Activity activity,SwipeRefreshLayout swipeRefreshLayout){
+        mRecyclerView=recyclerView;
+        mActivity=activity;
+        mSwipeRefreshLayout=swipeRefreshLayout;
+    }
+
+    /**
+     * 加入一条消息
+     * @param chatItem 加入的消息
+     */
     public void addNewChatItem(ChatItem chatItem){
-        mList.add(chatItem);
+        mShownList.add(chatItem);
         //notifyDataSetChanged();
         if(Looper.getMainLooper()!=Looper.myLooper()){
             mActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    notifyItemInserted(mList.size()-1);
+                    notifyItemInserted(mShownList.size()-1);
                     moveToNewItem();
                 }
             });
         }
         else {
-            notifyItemInserted(mList.size()-1);
+            notifyItemInserted(mShownList.size()-1);
             moveToNewItem();
         }
     }
 
+    /**
+     * dp值转像素
+     * @param dpValue dp值
+     * @return 像素值
+     */
+    private int dpToPx(int dpValue){
+        if(scale<=0)
+            scale=mActivity.getResources().getDisplayMetrics().density;
+        return (int)(dpValue*scale+0.5f);
+    }
+
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        ChatItem chatItem=mList.get(position);
+        ChatItem chatItem=mShownList.get(position);
+        Log.e(TAG,"position="+position+",s="+chatItem.getContent());
         View view= holder.mView;
-        View childView=null;
-        FrameLayout frameLayout=(FrameLayout)view.findViewById(R.id.chat_item_frameLayout);
-        ImageView profileImage=(ImageView)view.findViewById(R.id.chat_item_profile);
-        Glide.with(view.getContext()).load(chatItem.getProfileUri()).into(profileImage);
+        Glide.with(view.getContext()).load(chatItem.getProfileUri()).into(holder.mImageView_profile);
         int height=0;
         switch (chatItem.getChatType()){
             case TEXT:
                 TextView textView=(TextView)view.findViewById(R.id.chat_item_text);
-                textView.setTextSize(30);
-                String text[]=chatItem.getContent().split("\n");
-                TextPaint textPaint=textView.getPaint();
-                int line=0;
-                Rect bounds=new Rect();
-                int line_forEachString=0;
-                for(int i=0;i<text.length;i++){
-                    textPaint.getTextBounds(text[i],0,text[i].length(),bounds);
-                    line_forEachString=bounds.width()/(width_content-a_icon);
-                    int l=(bounds.width()%(width_content-a_icon)==0)?line_forEachString:line_forEachString+1;
-                    line+=(l==0)?1:l;
-                }
-                height=line*dpToPx(a_icon);
-                //Log.e(TAG,"height="+height+",line="+line);
                 textView.setText(chatItem.getContent());
-                childView=textView;
                 break;
             case IMAGE:
                 ImageView imageView=(ImageView)view.findViewById(R.id.chat_item_image);
@@ -155,26 +210,14 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
                 }
                 else
                     Glide.with(view.getContext()).load(chatItem.getContent()).into(imageView);
-                //Log.e(TAG,"h="+height+",w="+bitmap.getWidth());
-
                 bitmap=null;
-                childView=imageView;
                 break;
         }
-        ViewGroup.LayoutParams layoutParams1=childView.getLayoutParams();
-        layoutParams1.height=height;
-        layoutParams1.width=width_content-dpToPx(48);
-        if(chatItem.is_others())
-            childView.setX(dpToPx(48));
-        childView.setLayoutParams(layoutParams1);
-        frameLayout.setLayoutParams(new LinearLayout.LayoutParams(width_content,height));
-        view.setLayoutParams(new LinearLayout.LayoutParams(width_content,height+dpToPx(2)));
-        //Log.e(TAG,"imageH="+profileImage.getHeight());
     }
 
     @Override
     public int getItemViewType(int position) {
-        ChatItem chatItem=mList.get(position);
+        ChatItem chatItem=mShownList.get(position);
         switch (chatItem.getChatType()){
             case TEXT:
                 return chatItem.is_others()?TEXT_OTHERS:TEXT_USER;
@@ -207,15 +250,19 @@ public class ChatItemAdapter extends RecyclerView.Adapter<ChatItemAdapter.ViewHo
 
     @Override
     public int getItemCount() {
-        return mList.size();
+        return mShownList.size();
     }
 
     class ViewHolder extends RecyclerView.ViewHolder{
         View mView;
+        TextView mTextView_time;
+        ImageView mImageView_profile;
 
         public ViewHolder(View view){
             super(view);
             mView=view;
+            mTextView_time=(TextView)view.findViewById(R.id.chat_item_textView_time);
+            mImageView_profile=(ImageView)view.findViewById(R.id.chat_item_profile);
         }
     }
 }

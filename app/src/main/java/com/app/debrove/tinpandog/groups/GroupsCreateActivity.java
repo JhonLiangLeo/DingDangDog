@@ -14,7 +14,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.app.debrove.tinpandog.R;
-import com.app.debrove.tinpandog.datebase.GroupsInformation;
 import com.app.debrove.tinpandog.datebase.GroupsMemberInformation;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMGroup;
@@ -181,10 +180,6 @@ public class GroupsCreateActivity extends Activity implements View.OnClickListen
                 EMGroup emGroup=EMClient.getInstance().groupManager().createGroup(mString[0], "desc",mNames,"reason", mEMGroupOptions);
                 String groupsName=emGroup.getGroupId();
 
-                GroupsInformation groupsInformation=new GroupsInformation();
-                groupsInformation.setGroupsRealName(mString[0]);
-                groupsInformation.setGroupsName(groupsName);
-                groupsInformation.save();
                 if(!GroupsCreateActivity.this.isDestroyed()) {
                     GroupsActivity.startGroupsActivity(new String[]{groupsName,mUserName,mProfilePath,mString[0]},GroupsCreateActivity.this);
                     finish();

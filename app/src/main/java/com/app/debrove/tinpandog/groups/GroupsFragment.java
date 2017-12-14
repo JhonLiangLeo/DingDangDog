@@ -6,6 +6,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -48,12 +49,17 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
     Button mButton;
     @BindView(R.id.groups_frame_button_getLocation)
     Button mButton_getLocation;
+    @BindView(R.id.groups_frame_swipeRefreshLayout)
+    SwipeRefreshLayout mSwipeRefreshLayout;
     /**
      * 显示群组信息
      */
     @BindView(R.id.groups_frame_recyclerView_groups)
     RecyclerView mRecyclerView_groups;
 
+    /**
+     * 群粗刷新的layout控件
+     */
     private DrawerLayout mDrawerLayout;
 
     public static GroupsFragment newInstance() {
@@ -86,8 +92,31 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
         mDrawerLayout = getActivity().findViewById(R.id.drawer);
 
         mGroupsAdapter=new GroupsAdapter(getActivity());
-        mRecyclerView_groups.setLayoutManager(new LinearLayoutManager(getContext()));
+        LinearLayoutManager linearLayoutManager=new LinearLayoutManager(getContext());
+        mRecyclerView_groups.setLayoutManager(linearLayoutManager);
         mRecyclerView_groups.setAdapter(mGroupsAdapter);
+        mRecyclerView_groups.addOnScrollListener(new RecyclerOnScrollListener(linearLayoutManager) {
+            @Override
+            public void onLoadMore() {
+                mGroupsAdapter.onLoadMore();
+            }
+        });
+
+        mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                mGroupsAdapter.onRefresh(mSwipeRefreshLayout);
+            }
+        });
+    }
+
+    /**
+     * 界面不可见时停止群组信息刷新（如果有）
+     */
+    @Override
+    public void onPause() {
+        super.onPause();
+        mGroupsAdapter.onPause();
     }
 
     @Override
@@ -97,14 +126,6 @@ public class GroupsFragment extends Fragment implements GroupsContract.View, Too
         }
     }
 
-    /**
-     * 在重新进入时检查群组信息是否变动，以更新UI
-     */
-    @Override
-    public void onStart() {
-        super.onStart();
-        mGroupsAdapter.onActivityStart();
-    }
 
     @Override
     public void onDestroyView() {

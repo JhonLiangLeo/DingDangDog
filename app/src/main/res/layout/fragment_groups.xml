@@ -111,60 +111,16 @@
             android:layout_marginTop="20dp"
             android:text="自定义群组" />
 
-        <LinearLayout
-            android:id="@+id/groups_layout"
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:gravity="center_horizontal"
-
-            android:orientation="horizontal">
-
-            <ImageView
-                android:layout_width="54dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="10dp"
-                android:src="@drawable/placeholder" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginTop="12dp"
-                    android:text="珠海市创业沙拉十人小分队"
-                    android:textColor="@color/black"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginTop="4dp"
-                    android:text="张三：明天我们一起讨论一下"
-                    android:textColor="@color/grey"
-                    android:textSize="16sp" />
-
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="bottom|end"
-                android:paddingBottom="6dp"
-                android:paddingEnd="6dp"
-                android:text="23:27" />
-
-        </LinearLayout>
-
-        <android.support.v7.widget.RecyclerView
-            android:id="@+id/groups_frame_recyclerView_groups"
+        <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/groups_frame_swipeRefreshLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-        </android.support.v7.widget.RecyclerView>
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/groups_frame_recyclerView_groups"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+            </android.support.v7.widget.RecyclerView>
+        </android.support.v4.widget.SwipeRefreshLayout>
 
     </LinearLayout>
 

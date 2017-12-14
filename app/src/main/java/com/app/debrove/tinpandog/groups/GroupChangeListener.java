@@ -2,7 +2,6 @@ package com.app.debrove.tinpandog.groups;
 
 import android.util.Log;
 
-import com.app.debrove.tinpandog.datebase.GroupsInformation;
 import com.hyphenate.EMGroupChangeListener;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMGroup;
@@ -83,10 +82,6 @@ public class GroupChangeListener implements EMGroupChangeListener {
         Log.e(TAG,"s="+s+",s1="+s1+",s2="+s2);
         if("".equals(s)||"".equals(s2))
             return;
-        GroupsInformation groupsInformation=new GroupsInformation();
-        groupsInformation.setGroupsName(s);
-        groupsInformation.setGroupsRealName(s2);
-        groupsInformation.save();
     }
 
     @Override
